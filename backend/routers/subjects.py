@@ -2,9 +2,10 @@
 # Endpoints for working with the "subjects" table in Supabase
 # (e.g. "Math - 10th", "Science - 9th").
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from auth import get_current_user, require_admin
 from database import supabase
 
 # A router groups related endpoints together. main.py "includes" this
@@ -31,17 +32,17 @@ def _require_supabase():
         )
 
 
-# GET /subjects - list all subjects.
+# GET /subjects - list all subjects. Any logged-in user can browse.
 @router.get("")
-def list_subjects():
+def list_subjects(current_user: dict = Depends(get_current_user)):
     _require_supabase()
     response = supabase.table("subjects").select("*").order("created_at").execute()
     return response.data
 
 
-# POST /subjects - create a new subject.
+# POST /subjects - create a new subject. Admins only.
 @router.post("", status_code=201)
-def create_subject(subject: SubjectCreate):
+def create_subject(subject: SubjectCreate, current_user: dict = Depends(require_admin)):
     _require_supabase()
     response = supabase.table("subjects").insert(subject.model_dump()).execute()
     return response.data[0]

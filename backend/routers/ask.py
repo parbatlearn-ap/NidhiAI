@@ -7,9 +7,10 @@
 # services/retrieval.py. Otherwise it falls back to the AI's general
 # knowledge.
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from auth import get_current_user
 from services.retrieval import find_relevant_chunks
 from services.tutor import generate_answer
 
@@ -30,7 +31,7 @@ class AskResponse(BaseModel):
 
 
 @router.post("/ask", response_model=AskResponse)
-def ask_question(request: AskRequest):
+def ask_question(request: AskRequest, current_user: dict = Depends(get_current_user)):
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty.")

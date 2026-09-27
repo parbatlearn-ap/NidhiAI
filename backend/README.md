@@ -16,28 +16,42 @@ work before adding real features.
   `.env` file
 - `database.py` — creates the shared Supabase client using those
   settings
+- `auth.py` — checks who's making a request. `get_current_user`
+  requires any valid login; `require_admin` additionally requires
+  `role = 'admin'`. Used as a dependency on protected endpoints.
 - `.env.example` — a template showing which environment variables
   are needed (copy it to `.env` in the project root and fill in real
   values — never commit the real `.env` file)
 - `requirements.txt` — the list of Python packages this project needs
 - `routers/` — the API endpoints, grouped by feature:
   - `/` and `/health` (in `main.py`) — confirm the server is running,
-    and whether Supabase is configured correctly
-  - `subjects.py` — `GET /subjects` and `POST /subjects`, backed by
-    the `subjects` table in Supabase
-  - `infographics.py` — `POST /infographics/generate` (give it a
-    topic like "Photosynthesis", get back a hand-drawn-style
-    infographic) and `GET /infographics/{id}/download` (download it
-    as PNG or PDF)
-  - `ask.py` — `POST /ask` (send a question, get back a simple
-    tutor-style explanation). If a relevant textbook PDF has been
-    uploaded, the answer is grounded in it (`used_textbook: true`,
-    plus which `source_pages` it used); otherwise it falls back to
-    general knowledge.
-  - `pdf_documents.py` — `POST /pdf-documents/upload` (multipart
-    form: `subject_id` + `file`). Stores the PDF in Supabase Storage,
-    extracts and chunks its text, and embeds each chunk so `/ask`
-    can search it later.
+    and whether Supabase is configured correctly (public, no login)
+  - `auth.py` — `POST /auth/signup` (email + password + full_name;
+    `role` defaults to `student`, and `admin` can't be self-assigned —
+    promote an account to admin directly in Supabase), `POST
+    /auth/login` (returns an access token), `GET /auth/me` (current
+    user's profile). Passwords are handled entirely by Supabase Auth —
+    this backend never stores them.
+  - `subjects.py` — `GET /subjects` (any logged-in user) and `POST
+    /subjects` (admins only), backed by the `subjects` table in
+    Supabase
+  - `infographics.py` — `POST /infographics/generate` (any logged-in
+    user; give it a topic like "Photosynthesis", get back a
+    hand-drawn-style infographic) and `GET /infographics/{id}/download`
+    (download it as PNG or PDF)
+  - `ask.py` — `POST /ask` (any logged-in user; send a question, get
+    back a simple tutor-style explanation). If a relevant textbook
+    PDF has been uploaded, the answer is grounded in it
+    (`used_textbook: true`, plus which `source_pages` it used);
+    otherwise it falls back to general knowledge.
+  - `pdf_documents.py` — `POST /pdf-documents/upload` (admins only;
+    multipart form: `subject_id` + `file`). Stores the PDF in
+    Supabase Storage, extracts and chunks its text, and embeds each
+    chunk so `/ask` can search it later.
+
+Endpoints marked "admins only" or "any logged-in user" require an
+`Authorization: Bearer <access_token>` header — get a token from
+`POST /auth/login` first.
 - `services/` — the AI logic behind the endpoints above:
   - `infographic_content.py` — turns a topic into a short title +
     key points. Uses Gemini if `GEMINI_API_KEY` is set (this is a

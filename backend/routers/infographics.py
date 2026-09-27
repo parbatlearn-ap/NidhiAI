@@ -6,10 +6,11 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from auth import get_current_user
 from services.infographic_content import generate_infographic_content
 from services.infographic_render import render_infographic
 
@@ -34,7 +35,7 @@ class InfographicResponse(BaseModel):
 
 
 @router.post("/generate", response_model=InfographicResponse)
-def generate_infographic(request: InfographicRequest):
+def generate_infographic(request: InfographicRequest, current_user: dict = Depends(get_current_user)):
     topic = request.topic.strip()
     if not topic:
         raise HTTPException(status_code=400, detail="Topic must not be empty.")
@@ -57,7 +58,7 @@ def generate_infographic(request: InfographicRequest):
 
 
 @router.get("/{file_id}/download")
-def download_infographic(file_id: str, format: str = "png"):
+def download_infographic(file_id: str, format: str = "png", current_user: dict = Depends(get_current_user)):
     if format not in ("png", "pdf"):
         raise HTTPException(status_code=400, detail="format must be 'png' or 'pdf'.")
 

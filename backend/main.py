@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from config import check_required_settings
 from database import supabase
-from routers import subjects, infographics, ask, pdf_documents
+from routers import subjects, infographics, ask, pdf_documents, auth
 
 # Warn on startup if .env is missing expected values (doesn't crash
 # the server, just prints a message in the terminal).
@@ -16,7 +16,8 @@ check_required_settings()
 # This "app" object is what uvicorn runs to start the server.
 app = FastAPI(title="NidhiAI Backend")
 
-# Register the /subjects, /infographics, /ask, and /pdf-documents endpoints.
+# Register the /auth, /subjects, /infographics, /ask, and /pdf-documents endpoints.
+app.include_router(auth.router)
 app.include_router(subjects.router)
 app.include_router(infographics.router)
 app.include_router(ask.router)

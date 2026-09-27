@@ -6,8 +6,9 @@
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 
+from auth import require_admin
 from database import supabase
 from services.pdf_ingest import build_chunks_with_embeddings
 
@@ -22,7 +23,11 @@ def _require_supabase():
 
 
 @router.post("/upload")
-async def upload_pdf(subject_id: str = Form(...), file: UploadFile = File(...)):
+async def upload_pdf(
+    subject_id: str = Form(...),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_admin),
+):
     _require_supabase()
 
     if file.content_type != "application/pdf":
