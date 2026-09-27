@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, BookMarked, Sparkles, GraduationCap, User } from "lucide-react";
 import toast from "react-hot-toast";
@@ -26,6 +27,8 @@ const SUGGESTIONS = [
 ];
 
 export default function AskTutor() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [question, setQuestion] = useState("");
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -33,12 +36,24 @@ export default function AskTutor() {
   const [standard, setStandard] = useState<string>("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSubjects()
       .then(setSubjects)
       .catch(() => setSubjects([]));
   }, []);
+
+  useEffect(() => {
+    const incomingSubjectId = (location.state as { subjectId?: string } | null)?.subjectId;
+    if (incomingSubjectId) {
+      setSubjectId(incomingSubjectId);
+      inputRef.current?.focus();
+      // Clear the router state so navigating back here later doesn't reapply it.
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -223,6 +238,7 @@ export default function AskTutor() {
           className="flex items-center gap-2 border-t border-white/5 p-4"
         >
           <input
+            ref={inputRef}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Type your question..."

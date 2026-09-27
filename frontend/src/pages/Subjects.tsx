@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Plus, X, Search } from "lucide-react";
+import { BookOpen, Plus, X, Search, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
@@ -17,6 +18,7 @@ const CARD_GRADIENTS = [
 ];
 
 export default function Subjects() {
+  const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile);
   const isAdmin = profile?.role === "admin";
 
@@ -103,7 +105,10 @@ export default function Subjects() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
             >
-              <Card className="h-full p-5 transition-transform hover:-translate-y-1">
+              <Card
+                onClick={() => navigate("/app/ask", { state: { subjectId: s.id } })}
+                className="group h-full cursor-pointer p-5 transition-transform hover:-translate-y-1"
+              >
                 <div
                   className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${
                     CARD_GRADIENTS[i % CARD_GRADIENTS.length]
@@ -114,6 +119,9 @@ export default function Subjects() {
                 <h3 className="font-semibold">{s.name}</h3>
                 <p className="mt-0.5 text-xs text-white/40">Standard {s.standard}</p>
                 {s.description && <p className="mt-2 text-sm text-white/50">{s.description}</p>}
+                <div className="mt-3 flex items-center gap-1 text-xs font-medium text-brand-300 opacity-0 transition-opacity group-hover:opacity-100">
+                  Ask Tutor about this <ArrowRight className="h-3 w-3" />
+                </div>
               </Card>
             </motion.div>
           ))}
