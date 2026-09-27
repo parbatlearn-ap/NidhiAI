@@ -65,10 +65,12 @@ Endpoints marked "admins only" or "any logged-in user" require an
   - `pdf_ingest.py` — extracts text from an uploaded PDF and splits
     it into overlapping ~800-character chunks
   - `embeddings.py` — turns text into vectors so chunks can be
-    searched by meaning. Runs locally (sentence-transformers'
-    all-MiniLM-L6-v2 model, downloaded once and cached) rather than
-    calling a cloud API - no rate limits or daily quota, which
-    matters once you're embedding whole textbooks
+    searched by meaning. Runs locally (fastembed running the
+    all-MiniLM-L6-v2 model as ONNX, downloaded once and cached)
+    rather than calling a cloud API - no rate limits or daily quota,
+    which matters once you're embedding whole textbooks, and (unlike
+    the PyTorch-based sentence-transformers library it replaced) a
+    small enough memory footprint to run on a free-tier host
   - `scripts/ingest_textbooks.py` — bulk-uploads every PDF in a
     folder as one standard's textbooks in one go, e.g.
     `python scripts/ingest_textbooks.py "path\to\Class 9 Books_PDF" 9th`
