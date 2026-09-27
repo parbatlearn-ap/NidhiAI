@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-dotenv
+supabase
+groq
+google-genai
+Pillow
+pypdf
+python-multipart
+sentence-transformers
