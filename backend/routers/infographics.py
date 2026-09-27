@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from auth import get_current_user
 from services.infographic_content import generate_infographic_content
 from services.infographic_render import render_infographic
+from services.tutor import is_on_topic
 
 router = APIRouter(prefix="/infographics", tags=["infographics"])
 
@@ -41,6 +42,11 @@ def generate_infographic(request: InfographicRequest, current_user: dict = Depen
         raise HTTPException(status_code=400, detail="Topic must not be empty.")
 
     try:
+        if not is_on_topic(topic):
+            raise HTTPException(
+                status_code=422,
+                detail="That topic isn't something I can make a study infographic for. Try a topic from your Class 8-10 subjects instead.",
+            )
         content = generate_infographic_content(topic, standard=request.standard)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

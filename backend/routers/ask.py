@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from auth import get_current_user
 from services.retrieval import find_relevant_chunks
-from services.tutor import generate_answer
+from services.tutor import generate_answer, is_on_topic, OFF_TOPIC_MESSAGE
 
 router = APIRouter(tags=["ask"])
 
@@ -35,6 +35,12 @@ def ask_question(request: AskRequest, current_user: dict = Depends(get_current_u
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty.")
+
+    try:
+        if not is_on_topic(question):
+            return AskResponse(answer=OFF_TOPIC_MESSAGE, used_textbook=False, source_pages=[])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     chunks = find_relevant_chunks(question, subject_id=request.subject_id)
     excerpts = [chunk["content"] for chunk in chunks]
