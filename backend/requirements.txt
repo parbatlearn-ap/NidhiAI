@@ -1,3 +1,10 @@
+# PyTorch's default PyPI wheel bundles full CUDA/GPU libraries (multiple
+# GB) that a CPU-only host like Render's free tier doesn't need and can't
+# fit in 512MB RAM. Point pip at PyTorch's dedicated CPU-only index first,
+# falling back to PyPI for every other package.
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
 fastapi
 uvicorn
 python-dotenv
