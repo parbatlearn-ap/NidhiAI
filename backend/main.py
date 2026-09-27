@@ -3,6 +3,7 @@
 # FastAPI is the web framework we use to build the API.
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from config import check_required_settings
 from database import supabase
@@ -15,6 +16,16 @@ check_required_settings()
 # Create the FastAPI application instance.
 # This "app" object is what uvicorn runs to start the server.
 app = FastAPI(title="NidhiAI Backend")
+
+# Allow the frontend (running on a different port during development,
+# and on its own domain once deployed) to call this API from the browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Register the /auth, /subjects, /infographics, /ask, and /pdf-documents endpoints.
 app.include_router(auth.router)

@@ -68,12 +68,21 @@ def generate_infographic_content(topic: str, standard: str | None = None) -> dic
     Raises RuntimeError if neither provider is configured, or if the
     model's response can't be parsed as the expected JSON shape.
     """
-    if GEMINI_API_KEY:
-        raw = _generate_with_gemini(topic, standard)
-    elif GROQ_API_KEY:
-        raw = _generate_with_groq(topic, standard)
-    else:
+    if not GEMINI_API_KEY and not GROQ_API_KEY:
         raise RuntimeError("Neither GEMINI_API_KEY nor GROQ_API_KEY is configured. Check your .env file.")
+
+    raw = None
+    if GEMINI_API_KEY:
+        try:
+            raw = _generate_with_gemini(topic, standard)
+        except Exception:
+            # Gemini's free tier can be flaky (rate limits, transient
+            # "high demand" 503s). Fall back to Groq instead of failing
+            # the whole request, if it's configured.
+            if not GROQ_API_KEY:
+                raise
+    if raw is None:
+        raw = _generate_with_groq(topic, standard)
 
     try:
         data = json.loads(raw)
