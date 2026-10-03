@@ -4,6 +4,8 @@
 # yet look anything up in the uploaded textbook PDFs (that would need
 # the chunking/embedding pipeline, which is a bigger piece of work).
 
+import re
+
 from groq import Groq
 
 from config import GROQ_API_KEY
@@ -44,6 +46,46 @@ OFF_TOPIC_MESSAGE = (
     "History, Geography, and similar). Try asking me a question from your "
     "syllabus instead!"
 )
+
+# Returned (without calling the LLM) when the textbook has no relevant
+# content for the question, or when an answer is blocked for citing
+# pages that weren't actually retrieved.
+NOT_IN_TEXTBOOK_MESSAGE = (
+    "I couldn't find this in your textbook, so I can't answer it reliably. "
+    "Try rephrasing your question, or ask about a topic from your "
+    "chapters."
+)
+
+
+# Matches page citations like "page 12", "pages 12, 14 and 15", "p. 7",
+# "pp. 10-12", "pg 3". Captures the whole number list/range after the
+# keyword so each number can be checked.
+_NUM = r"\d+(?:\s*(?:-|–|—|to)\s*\d+)?"
+_PAGE_CITATION_RE = re.compile(
+    rf"\b(?:pages?|pp?\.?|pg\.?)\s*(?:no\.?|number|#)?\s*:?\s*"
+    rf"({_NUM}(?:\s*(?:,|and|&)\s*{_NUM})*)",
+    re.IGNORECASE,
+)
+_MAX_RANGE = 50
+
+
+def cited_pages(answer: str) -> set[int]:
+    """Every page number the answer text claims to cite."""
+    pages: set[int] = set()
+    for match in _PAGE_CITATION_RE.finditer(answer):
+        for part in re.split(r"\s*(?:,|and|&)\s*", match.group(1), flags=re.IGNORECASE):
+            bounds = [int(n) for n in re.findall(r"\d+", part)]
+            if len(bounds) == 2 and 0 <= bounds[1] - bounds[0] <= _MAX_RANGE:
+                pages.update(range(bounds[0], bounds[1] + 1))
+            else:
+                pages.update(bounds)
+    return pages
+
+
+def citations_are_grounded(answer: str, retrieved_pages: set[int]) -> bool:
+    """True if every page the answer cites is among the pages of the
+    chunks retrieved for this query (or if it cites none)."""
+    return cited_pages(answer) <= retrieved_pages
 
 
 def is_on_topic(question: str) -> bool:
@@ -102,7 +144,10 @@ def generate_answer(
         excerpts_text = "\n\n".join(f"- {excerpt}" for excerpt in textbook_excerpts)
         user_prompt += (
             "\n\nHere are relevant excerpts from the student's textbook. "
-            "Base your answer on these where possible:\n" + excerpts_text
+            "Answer ONLY from these excerpts; if they do not contain the "
+            "answer, say so instead of using outside knowledge. Do not "
+            "mention page numbers - they are shown separately:\n"
+            + excerpts_text
         )
 
     response = client.chat.completions.create(
