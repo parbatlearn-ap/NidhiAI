@@ -5,6 +5,6 @@ supabase
 groq
 google-genai
 Pillow
-pypdf
+pypdfium2
 python-multipart
 fastembed

@@ -3,11 +3,8 @@
 # page, split it into smaller chunks, embed each chunk, and hand
 # back rows ready to insert into pdf_chunks.
 
-from io import BytesIO
-
-from pypdf import PdfReader
-
 from services.embeddings import embed_texts
+from services.pdf_text import extract_pages
 
 # Roughly how many characters per chunk. Small enough that each
 # chunk stays focused on one idea, big enough to keep the total
@@ -16,13 +13,6 @@ from services.embeddings import embed_texts
 # so fewer chunks means faster ingestion.
 CHUNK_SIZE = 1200
 CHUNK_OVERLAP = 150
-
-
-def extract_pages(pdf_bytes: bytes) -> list[str]:
-    """Returns a list of extracted text, one entry per page (1-indexed
-    conceptually - index 0 in the list is page 1)."""
-    reader = PdfReader(BytesIO(pdf_bytes))
-    return [page.extract_text() or "" for page in reader.pages]
 
 
 def _split_into_chunks(text: str) -> list[str]:
