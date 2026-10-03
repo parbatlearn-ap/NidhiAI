@@ -4,23 +4,31 @@
 # search - this is the "R" (retrieval) in RAG (retrieval-augmented
 # generation).
 
+from config import RELEVANCE_THRESHOLD
 from database import supabase
 from services.embeddings import embed_text
 
 MATCH_COUNT = 4
-# Cosine similarity ranges roughly -1..1. This threshold is tuned
-# for the all-MiniLM-L6-v2 model specifically (see services/
-# embeddings.py) - measured against real textbook content, genuinely
-# relevant chunks scored ~0.42-0.50 and irrelevant ones ~0.13-0.15,
-# so 0.35 sits safely in the gap. Retune if the embedding model ever
-# changes.
-MIN_SIMILARITY = 0.35
+# Hard relevance gate. The "similarity" returned by match_pdf_chunks is
+# the cosine similarity between the question embedding and the chunk
+# embedding (-1..1). If even the best chunk is below this, the question
+# is treated as not covered by the textbook and the LLM is never called
+# (see routers/ask.py). Set via RELEVANCE_THRESHOLD in .env (default
+# 0.75).
+#
+# NOTE: this model (all-MiniLM-L6-v2) scores genuinely relevant chunks
+# fairly low - earlier measurements were ~0.42-0.50 for relevant and
+# ~0.13-0.15 for irrelevant. A threshold of 0.75 may therefore reject
+# valid questions; check real scores (logged below) and retune.
+MIN_SIMILARITY = RELEVANCE_THRESHOLD
 
 
 def find_relevant_chunks(question: str, subject_id: str | None = None) -> list[dict]:
     """Returns a list of {"content", "page_number", "similarity"} for
-    the chunks most relevant to the question, or an empty list if
-    nothing relevant was found (e.g. no PDFs uploaded yet)."""
+    the chunks relevant to the question. Returns an empty list - which
+    the caller must treat as "refuse, don't call the LLM" - if the top
+    match is below MIN_SIMILARITY, or if nothing could be searched
+    (e.g. no PDFs uploaded yet)."""
     if supabase is None:
         return []
 
@@ -35,4 +43,13 @@ def find_relevant_chunks(question: str, subject_id: str | None = None) -> list[d
         },
     ).execute()
 
-    return [row for row in response.data if row["similarity"] >= MIN_SIMILARITY]
+    rows = response.data or []
+    if not rows:
+        return []
+
+    top_similarity = max(row["similarity"] for row in rows)
+    print(f"[retrieval] top similarity {top_similarity:.3f} (threshold {MIN_SIMILARITY})")
+    if top_similarity < MIN_SIMILARITY:
+        return []
+
+    return [row for row in rows if row["similarity"] >= MIN_SIMILARITY]

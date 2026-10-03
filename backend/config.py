@@ -23,6 +23,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
+# Minimum cosine similarity the best-matching textbook chunk must reach
+# before the AI is allowed to answer at all (see services/retrieval.py).
+# Overridable via .env so it can be tuned without a code change.
+RELEVANCE_THRESHOLD = float(os.getenv("RELEVANCE_THRESHOLD", "0.75"))
+
+
 def check_required_settings():
     """
     Warn (rather than crash) if expected settings are missing from
