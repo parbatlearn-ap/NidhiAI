@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from auth import get_current_user
 from services.infographic_content import generate_infographic_content
 from services.infographic_render import render_infographic
+from services.language_gate import LANGUAGE_GATE_MESSAGE, check_language_gate
 from services.tutor import is_on_topic
 
 router = APIRouter(prefix="/infographics", tags=["infographics"])
@@ -25,6 +26,10 @@ GENERATED_DIR = Path(__file__).resolve().parent.parent / "generated"
 class InfographicRequest(BaseModel):
     topic: str
     standard: str | None = None
+    # Optional; the current frontend doesn't send these, but if it ever
+    # does, a Hindi/Marathi subject is blocked (services/language_gate.py).
+    subject: str | None = None
+    subject_id: str | None = None
 
 
 class InfographicResponse(BaseModel):
@@ -40,6 +45,11 @@ def generate_infographic(request: InfographicRequest, current_user: dict = Depen
     topic = request.topic.strip()
     if not topic:
         raise HTTPException(status_code=400, detail="Topic must not be empty.")
+
+    # Temporary language gate (see services/language_gate.py): refuse
+    # before any LLM call. The message is hardcoded.
+    if check_language_gate(topic, subject=request.subject, subject_id=request.subject_id):
+        raise HTTPException(status_code=422, detail=LANGUAGE_GATE_MESSAGE)
 
     try:
         if not is_on_topic(topic):

@@ -7,6 +7,7 @@
 from config import RELEVANCE_THRESHOLD
 from database import supabase
 from services.embeddings import embed_text
+from services.language_gate import gated_pdf_ids
 
 MATCH_COUNT = 4
 # Hard relevance gate. The "similarity" returned by match_pdf_chunks is
@@ -34,16 +35,29 @@ def find_relevant_chunks(question: str, subject_id: str | None = None) -> list[d
 
     query_embedding = embed_text(question)
 
+    # Language gate: chunks from Hindi/Marathi PDFs are corrupted, so
+    # they're never used. match_pdf_chunks can't exclude PDFs itself, so
+    # fetch extra rows and drop those chunks here.
+    excluded_pdf_ids = gated_pdf_ids()
+    fetch_count = MATCH_COUNT * 5 if excluded_pdf_ids else MATCH_COUNT
+
     response = supabase.rpc(
         "match_pdf_chunks",
         {
             "query_embedding": query_embedding,
-            "match_count": MATCH_COUNT,
+            "match_count": fetch_count,
             "filter_subject_id": subject_id,
         },
     ).execute()
 
     rows = response.data or []
+    allowed_rows = [row for row in rows if row["pdf_id"] not in excluded_pdf_ids]
+    if len(allowed_rows) < len(rows):
+        print(
+            f"[language-gate] blocked: excluded {len(rows) - len(allowed_rows)} "
+            "chunk(s) from Hindi/Marathi PDFs"
+        )
+    rows = allowed_rows[:MATCH_COUNT]
     if not rows:
         return []
 

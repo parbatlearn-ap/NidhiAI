@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth import get_current_user
+from services.language_gate import LANGUAGE_GATE_MESSAGE, check_language_gate
 from services.retrieval import find_relevant_chunks
 from services.tutor import (
     NOT_IN_TEXTBOOK_MESSAGE,
@@ -41,6 +42,11 @@ def ask_question(request: AskRequest, current_user: dict = Depends(get_current_u
     question = request.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty.")
+
+    # Temporary language gate (see services/language_gate.py): refuse
+    # before retrieval or any LLM call. The message is hardcoded.
+    if check_language_gate(question, subject=request.subject, subject_id=request.subject_id):
+        return AskResponse(answer=LANGUAGE_GATE_MESSAGE, used_textbook=False, source_pages=[])
 
     off_topic = AskResponse(answer=OFF_TOPIC_MESSAGE, used_textbook=False, source_pages=[])
     not_in_textbook = AskResponse(
