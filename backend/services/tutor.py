@@ -47,6 +47,15 @@ OFF_TOPIC_MESSAGE = (
     "syllabus instead!"
 )
 
+# Returned (without calling the LLM) when the textbook has no relevant
+# content for the question, or when an answer is blocked for citing
+# pages that weren't actually retrieved.
+NOT_IN_TEXTBOOK_MESSAGE = (
+    "I couldn't find this in your textbook, so I can't answer it reliably. "
+    "Try rephrasing your question, or ask about a topic from your "
+    "chapters."
+)
+
 
 # Matches page citations like "page 12", "pages 12, 14 and 15", "p. 7",
 # "pp. 10-12", "pg 3". Captures the whole number list/range after the

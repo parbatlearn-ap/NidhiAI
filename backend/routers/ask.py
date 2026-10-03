@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from auth import get_current_user
 from services.retrieval import find_relevant_chunks
 from services.tutor import (
+    NOT_IN_TEXTBOOK_MESSAGE,
     OFF_TOPIC_MESSAGE,
     citations_are_grounded,
     generate_answer,
@@ -41,7 +42,10 @@ def ask_question(request: AskRequest, current_user: dict = Depends(get_current_u
     if not question:
         raise HTTPException(status_code=400, detail="Question must not be empty.")
 
-    refusal = AskResponse(answer=OFF_TOPIC_MESSAGE, used_textbook=False, source_pages=[])
+    off_topic = AskResponse(answer=OFF_TOPIC_MESSAGE, used_textbook=False, source_pages=[])
+    not_in_textbook = AskResponse(
+        answer=NOT_IN_TEXTBOOK_MESSAGE, used_textbook=False, source_pages=[]
+    )
 
     # Hard relevance gate: runs before ANY LLM call. No chunk at or
     # above the similarity threshold means the textbook doesn't cover
@@ -49,11 +53,11 @@ def ask_question(request: AskRequest, current_user: dict = Depends(get_current_u
     # general knowledge.
     chunks = find_relevant_chunks(question, subject_id=request.subject_id)
     if not chunks:
-        return refusal
+        return not_in_textbook
 
     try:
         if not is_on_topic(question):
-            return refusal
+            return off_topic
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -74,6 +78,6 @@ def ask_question(request: AskRequest, current_user: dict = Depends(get_current_u
     # Post-generation check: any page the answer cites must be one of
     # the pages actually retrieved for this query; otherwise block it.
     if not citations_are_grounded(answer, retrieved_pages):
-        return refusal
+        return not_in_textbook
 
     return AskResponse(answer=answer, used_textbook=True, source_pages=source_pages)
